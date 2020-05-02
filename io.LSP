@@ -1,0 +1,361 @@
+(defun c:incable()
+  (setq selectionset_count (vla-get-count (vla-get-SelectionSets doc) ))
+  (while (> selectionset_count 0)
+    (vla-delete (vla-item (vla-get-SelectionSets doc) 0))
+    (setq selectionset_count (1- selectionset_count)))
+
+  (setq location_name (getstring "Enter Location Name ( for example LOC-20A or JB-8 ) ")
+	inorout (getint "Enter 1 (InCable)   2(OutCable)   3(RunThrough) "))
+
+  (cond
+    ((= inorout 1) (alert "Please Select all Incoming Cables"))
+    ((= inorout 2) (alert "Please Select all Outgoing Cables"))
+    ((= inorout 3) (alert "Please Select all Incoming run-through Cables"))
+    )
+  
+  (setq setInCable (vla-Add (vla-get-SelectionSets doc) "in_cable"))
+  (vla-SelectOnScreen setInCable)
+  (setq count (vla-get-count setInCable))
+  (setq index 0)
+  (setq InCable(vlax-make-safearray vlax-vbstring (cons 0 (1- count)) '(0 . 1) ))
+  (while (> count 0)
+    (vlax-safearray-put-element InCable index 0 (vla-get-TextString (vla-Item setInCable index)))
+    (setq currInsertionPoint (vlax-safearray->list (vlax-variant-value (vla-get-InsertionPoint  (vla-Item setInCable index)))))
+    (vlax-safearray-put-element InCable index 1 (rtos (abs (cadr currInsertionPoint))))
+
+    (setq index (1+ index)
+	  count (1- count))
+
+    )
+  (sort setInCable InCable)
+  (setq InCable sortedarray)
+
+  (if (= inorout 3)
+    (progn
+  (alert "Please Select all outgoing run-through cables")  
+  (setq setOutCable (vla-Add (vla-get-SelectionSets doc) "out_cable"))
+  (vla-SelectOnScreen setOutCable)
+  (setq count (vla-get-count setOutCable))
+  (setq index 0)
+  (setq OutCable(vlax-make-safearray vlax-vbstring (cons 0 (1- count)) '(0 . 1) ))
+  (while (> count 0)
+    (vlax-safearray-put-element OutCable index 0 (vla-get-TextString (vla-Item setOutCable index)))
+    (setq currInsertionPoint (vlax-safearray->list (vlax-variant-value (vla-get-InsertionPoint  (vla-Item setOutCable index)))))
+    (vlax-safearray-put-element OutCable index 1 (rtos (abs (cadr currInsertionPoint))))
+
+    (setq index (1+ index)
+	  count (1- count))
+
+    )
+  (sort setOutCable OutCable)
+  (setq OutCable sortedarray)
+      )
+    )
+
+  (setq cableindex 0
+        cablecount (vla-get-count setInCable))
+  (setq Infunctions (vlax-make-safearray vlax-vbstring (cons 0 (1- cablecount)) '(0 . 29)))
+  (setq Incores (vlax-make-safearray vlax-vbstring (cons 0 (1- cablecount)) '(0 . 29)))
+
+  (while (< cableindex cablecount)
+    (alert (strcat "Please select the terminated cable functions  of " (vlax-safearray-get-element InCable cableindex 0)))
+    (if (/= (vl-string-search "QUAD" (vlax-safearray-get-element InCable cableindex 0)) nil) (setq quadflag 1) (setq quadflag 0))
+    
+  (setq setInFunction (vla-Add (vla-get-SelectionSets doc) "In_functions"))
+  (vla-SelectOnScreen setInFunction)
+  (setq count (vla-get-count setInFunction))
+    
+  (setq index 0)
+  (setq tempfunctions(vlax-make-safearray vlax-vbstring (cons 0 (1- count)) '(0 . 1) ))
+  (while (> count 0)
+    (vlax-safearray-put-element tempfunctions index 0 (vla-get-TextString (vla-Item setInFunction index)))
+    (setq currInsertionPoint (vlax-safearray->list (vlax-variant-value (vla-get-InsertionPoint  (vla-Item setInFunction index)))))
+    (vlax-safearray-put-element tempfunctions index 1 (rtos (abs (cadr currInsertionPoint))))
+
+    (setq index (1+ index)
+	  count (1- count))
+
+    )
+  (sort setInFunction tempfunctions)
+  (setq tempfunctions sortedarray)
+    (setq index 0)
+    (while (< index (vla-get-count setInFunction))
+      (vlax-safearray-put-element Infunctions cableindex index (vlax-safearray-get-element tempfunctions index 0))
+      (setq index (1+ index))
+      )
+   
+
+   ;; Add core text objects to a selection set by prompting user to select on the screen
+    (alert "Now select all the cores")
+
+  (setq setInCore (vla-Add (vla-get-SelectionSets doc) "In_core"))
+  (vla-SelectOnScreen setInCore)
+  (setq count (vla-get-count setInCore))
+  (setq tempcore (vlax-make-safearray vlax-vbstring (cons 0 (1- count)) '(0 . 1) ))
+  (setq index 0)
+  ;code for storing text string of cores in array
+  (while (> count 0)
+    (vlax-safearray-put-element tempcore index 0 (vla-get-TextString (vla-Item setInCore index)))
+    (setq currInsertionPoint (vlax-safearray->list (vlax-variant-value (vla-get-InsertionPoint  (vla-Item setInCore index)))))
+    (vlax-safearray-put-element tempcore index 1 (rtos (abs (cadr currInsertionPoint))))
+
+    (setq index (1+ index)
+	  count (1- count))
+
+    )
+  (sort setInCore tempcore)
+  (setq tempcore sortedarray)
+    (setq index 0)
+    (while (< index (vla-get-count setInCore))
+      (if (= quadflag 1)
+	(setq str (get_quad_range (vlax-safearray-get-element tempcore index 0)))
+	(setq str (vlax-safearray-get-element tempcore index 0)))
+     (vlax-safearray-put-element Incores cableindex index str)
+      (setq index (1+ index))
+      )
+    (vla-delete setInFunction)
+    (vla-delete setInCore)
+
+    (setq cableindex (1+ cableindex))
+    )
+  (if (/= inorout 3)(store_in_excel Incable Infunctions Incores (rtos inorout 2 0) location_name))
+  (if (= inorout 3)(store_in_excel_a Incable Outcable Infunctions Incores (rtos inorout 2 0) location_name))
+  
+  )
+
+(defun c:tailcable()
+  (setq continue 1)
+  (setq loc (getstring "Enter Location Name ( for example LOC-20A or JB-8 ) "))
+  (GetExcel (strcat root_drive ":\\auto_edrc_s&t\\Outdoor Automation\\Database\\excel\\" STATION ".xlsx") loc "Z2")
+  (OpenExcel (strcat root_drive ":\\auto_edrc_s&t\\Outdoor Automation\\Database\\excel\\" STATION ".xlsx") loc :vlax-true)
+  (setq row (atoi (getcell "Z2")))
+  (while (= continue 1)
+    (setq selectionset_count (vla-get-count (vla-get-SelectionSets doc) ))
+    (while (> selectionset_count 0)
+    (vla-delete (vla-item (vla-get-SelectionSets doc) 0))
+    (setq selectionset_count (1- selectionset_count)))
+    
+    (setq tcable_name (vla-Add (vla-get-SelectionSets doc) "tail_cable"))
+    (vla-SelectOnScreen tcable_name)
+    (setq cable_name (vla-get-TextString (vla-Item tcable_name 0)))
+
+    (setq tcable_type (vla-Add (vla-get-SelectionSets doc) "tail_cable_type"))
+    (vla-SelectOnScreen tcable_type)
+    (setq cable_type (vla-get-TextString (vla-Item tcable_type 0)))
+
+    (if (/= (vl-string-search "QUAD" cable_type) nil)
+      (progn 
+      (setq quad_pos(getint (strcat "Please enter the quad number to which " cable_name " function belong to")))
+      (cond
+	( (= quad_pos 1)
+	 (setq fun (list cable_name "SPARE"))
+	 (setq cor (list "'1-4" "'5-16"))
+	 )
+	( (= quad_pos 2)
+	 (setq fun (list "SPARE" cable_name "SPARE"))
+	 (setq cor (list "'1-4" "'5-8" "'9-16"))
+	 )
+	( (= quad_pos 3)
+	 (setq fun (list "SPARE" cable_name "SPARE"))
+	 (setq cor (list "'1-8" "'9-12" "'13-16"))
+	 )
+	( (= quad_pos 4)
+	 (setq fun (list "SPARE" cable_name))
+	 (setq cor (list "'1-12" "'13-16"))
+	 )
+	)
+      (putcell (strcat "A" (rtos row)) cable_name)
+      (putcell (strcat "B" (rtos row)) cable_type)
+      (putcell (strcat "E" (rtos row)) "4")
+      (setq dindex 0 column "I")
+      (foreach item fun
+	(putcell (strcat column (rtos row)) item)
+	(putcell (strcat column (rtos (1+ row))) (nth dindex cor))
+	(setq dindex (1+ dindex))
+	(setq column (chr (1+ (ascii column))))
+	)
+      ))
+
+    (if (/= (vl-string-search "Sq.mm" cable_type) nil)
+      (progn
+	(setq tail_core (get_tail_core cable_type))
+	(alert (strcat "Please select functions of tail cable  " cable_name))
+	
+	(setq settailfunctions (vla-Add (vla-get-SelectionSets doc) "tail_cable_functions"))
+  	(vla-SelectOnScreen settailfunctions)
+ 	(setq count (vla-get-count settailfunctions))
+ 	(setq index 0)
+ 	(setq tailfunctions(vlax-make-safearray vlax-vbstring (cons 0 (1- count)) '(0 . 1) ))
+  	(while (> count 0)
+    	(vlax-safearray-put-element tailfunctions index 0 (vla-get-TextString (vla-Item settailfunctions index)))
+    	(setq currInsertionPoint (vlax-safearray->list (vlax-variant-value (vla-get-InsertionPoint  (vla-Item settailfunctions index)))))
+    	(vlax-safearray-put-element tailfunctions index 1 (rtos (abs (cadr currInsertionPoint))))
+
+    	(setq index (1+ index)
+	  count (1- count))
+
+    	)
+  	(sort settailfunctions tailfunctions)
+  	(setq tailfunctions sortedarray)
+
+	(alert (strcat "Please select cores of tail cable  " cable_name))
+
+	(setq settailcores (vla-Add (vla-get-SelectionSets doc) "tail_cable_CORES"))
+  	(vla-SelectOnScreen settailcores)
+ 	(setq count (vla-get-count settailcores))
+ 	(setq index 0)
+ 	(setq tailcores(vlax-make-safearray vlax-vbstring (cons 0 (1- count)) '(0 . 1) ))
+  	(while (> count 0)
+    	(vlax-safearray-put-element tailcores index 0 (vla-get-TextString (vla-Item settailcores index)))
+    	(setq currInsertionPoint (vlax-safearray->list (vlax-variant-value (vla-get-InsertionPoint  (vla-Item settailcores index)))))
+    	(vlax-safearray-put-element tailcores index 1 (rtos (abs (cadr currInsertionPoint))))
+
+    	(setq index (1+ index)
+	  count (1- count))
+
+    	)
+  	(sort settailcores tailcores)
+  	(setq tailcores sortedarray)
+
+      (putcell (strcat "A" (rtos row)) cable_name)
+      (putcell (strcat "B" (rtos row)) cable_type)
+      (putcell (strcat "E" (rtos row)) "4")
+      (setq dindex 0 column "I")
+	(setq fun (vlax-safearray->list tailfunctions)
+	      cor (vlax-safearray->list tailcores))
+	(foreach item fun
+	  (putcell (strcat column (rtos row)) (car item))
+	(putcell (strcat column (rtos (1+ row))) (strcat "'" (car (nth dindex cor))))
+	(setq dindex (1+ dindex))
+	(setq column (chr (1+ (ascii column))))
+	  )
+	)
+      )
+    
+    (setq row (+ 2 row)
+	  continue (getint "Please enter 1 to add more tail cables"))
+    )
+  (putcell "Z2" (rtos row 2 0))
+  (CloseExcel (strcat root_drive ":\\auto_edrc_s&t\\Outdoor Automation\\Database\\excel\\" STATION ".xlsx"))
+  )
+
+(defun c:inputspare()
+  (setq selectionset_count (vla-get-count (vla-get-SelectionSets doc) ))
+    (while (> selectionset_count 0)
+    (vla-delete (vla-item (vla-get-SelectionSets doc) 0))
+    (setq selectionset_count (1- selectionset_count)))
+
+    (setq from_spare (vla-Add (vla-get-SelectionSets doc) "sparefrom"))
+    (vla-SelectOnScreen from_spare)
+    (setq fs_name (vla-get-TextString (vla-Item from_spare 0)))
+
+    (setq to_spare (vla-Add (vla-get-SelectionSets doc) "spareto"))
+    (vla-SelectOnScreen to_spare)
+    (setq ts_name (vla-get-TextString (vla-Item to_spare 0)))
+
+  (setq loc (getstring "Enter Location Name ( for example LOC-20A or JB-8 ) "))
+
+    (GetExcel (strcat root_drive ":\\auto_edrc_s&t\\Outdoor Automation\\Database\\excel\\" STATION ".xlsx") loc "Z2")
+    (OpenExcel (strcat root_drive ":\\auto_edrc_s&t\\Outdoor Automation\\Database\\excel\\" STATION ".xlsx") loc :vlax-true)
+    (setq row (atoi (getcell "Z2")))
+   (processtext fs_name)
+    (setq cable_no cableNo)
+    (putcell (strcat "B" (rtos row)) corage)
+    (putcell (strcat "C" (rtos row)) from)
+    (processtext ts_name)
+    (setq cable_no (strcat cable_no "&" cableNo))
+    (putcell (strcat "A" (rtos row)) cable_no)
+    (putcell (strcat "D" (rtos row)) to)
+    (putcell (strcat "E" (rtos row)) "5")
+  (putcell (strcat "I" (rtos row)) "SPARE")
+  (putcell (strcat "I" (rtos (1+ row))) "'1-12")
+  (putcell "Z2" (rtos (+ 2 row)))
+  (CloseExcel (strcat root_drive ":\\auto_edrc_s&t\\Outdoor Automation\\Database\\excel\\" STATION ".xlsx"))
+  )
+(defun store_in_excel(cab fun cor key loc)
+  (GetExcel (strcat root_drive ":\\auto_edrc_s&t\\Outdoor Automation\\Database\\excel\\" STATION ".xlsx") loc "Z2")
+  (OpenExcel (strcat root_drive ":\\auto_edrc_s&t\\Outdoor Automation\\Database\\excel\\" STATION ".xlsx") loc :vlax-true)
+  (setq row (atoi (getcell "Z2")))
+  (setq totalcables  (vlax-safearray-get-u-bound cab 1)
+	index 0)
+  (while (<= index totalcables)
+    (processtext (vlax-safearray-get-element cab index 0))
+    (putcell (strcat "A" (rtos row)) cableNo)
+    (putcell (strcat "B" (rtos row)) corage)
+    (putcell (strcat "C" (rtos row)) from)
+    (putcell (strcat "D" (rtos row)) to)
+    (putcell (strcat "E" (rtos row)) key)
+
+    (setq funlist (nth index (vlax-safearray->list fun))
+	  dindex 0
+	  column "I")
+    
+    (foreach item funlist
+      (if (/= item "")
+	(progn 
+      (putcell (strcat column (rtos row)) (vlax-safearray-get-element fun index dindex))
+      (putcell (strcat column (rtos (1+ row))) (strcat "'" (vlax-safearray-get-element cor index dindex)))
+      (setq column (chr (1+ (ascii column))))
+      (setq dindex (1+ dindex))
+      ))
+      )
+    
+    
+    (setq index (1+ index))
+    (setq row (+ 2 row))
+    )
+  (putcell "Z2" (rtos row 2 0))
+  (CloseExcel (strcat root_drive ":\\auto_edrc_s&t\\Outdoor Automation\\Database\\excel\\" STATION ".xlsx"))
+  )
+
+(defun store_in_excel_a(fromcab tocab fun cor key loc)
+  (GetExcel (strcat root_drive ":\\auto_edrc_s&t\\Outdoor Automation\\Database\\excel\\" STATION ".xlsx") loc "Z2")
+  (OpenExcel (strcat root_drive ":\\auto_edrc_s&t\\Outdoor Automation\\Database\\excel\\" STATION ".xlsx") loc :vlax-true)
+  (setq row (atoi (getcell "Z2")))
+  (setq totalcables  (vlax-safearray-get-u-bound fromcab 1)
+	index 0)
+  (while (<= index totalcables)
+    (processtext (vlax-safearray-get-element fromcab index 0))
+    (setq cable_no cableNo)
+    (putcell (strcat "B" (rtos row)) corage)
+    (putcell (strcat "C" (rtos row)) from)
+    (processtext (vlax-safearray-get-element tocab index 0))
+    (setq cable_no (strcat cable_no "&" cableNo))
+    (putcell (strcat "A" (rtos row)) cable_no)
+    (putcell (strcat "D" (rtos row)) to)
+    (putcell (strcat "E" (rtos row)) key)
+
+    (setq funlist (nth index (vlax-safearray->list fun))
+	  dindex 0
+	  column "I")
+    
+    (foreach item funlist
+      (if (/= item "")
+	(progn 
+      (putcell (strcat column (rtos row)) (vlax-safearray-get-element fun index dindex))
+      (putcell (strcat column (rtos (1+ row))) (strcat "'" (vlax-safearray-get-element cor index dindex)))
+      (setq column (chr (1+ (ascii column))))
+      (setq dindex (1+ dindex))
+      ))
+      )
+    
+    
+    (setq index (1+ index))
+    (setq row (+ 2 row))
+    )
+  (putcell "Z2" (rtos row 2 0))
+  (CloseExcel (strcat root_drive ":\\auto_edrc_s&t\\Outdoor Automation\\Database\\excel\\" STATION ".xlsx"))
+  )
+
+
+;|(nth 3 (vlax-safearray->list Infunctions))
+(nth 3 (vlax-safearray->list InCores))
+(vlax-safearray->list tempcore)
+
+(get_quad_range (car (nth 5 (vlax-safearray->list tempcore))))
+(vlax-safearray-get-u-bound Incable 1)
+(vlax-safearray->list Incable)|;
+
+;|(defun c:outcable())
+(defun c:runcable())
+(defun c:tailcable())|;
