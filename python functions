@@ -1,0 +1,2 @@
+ord():- To get the integer value of a character
+chr():- To get the character value of a integer.
